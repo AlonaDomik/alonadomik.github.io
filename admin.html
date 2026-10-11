@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="uk"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Адмінка · Всесвіт Зграї</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Onest:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0618;--panel:#160d2e;--vio:#8a3dff;--ap:#ff7a1a;--text:#f3eaff;--mut:#bfaee6;--line:#3a2a63;--bad:#ff6b8a}
+*{box-sizing:border-box}html{scroll-padding-bottom:120px;scroll-padding-top:70px}body{margin:0;background:radial-gradient(60% 40% at 85% 0,rgba(138,61,255,.3),transparent),var(--bg);color:var(--text);font:400 16px/1.5 Onest,system-ui,sans-serif;min-height:100vh}
+header{display:flex;align-items:center;gap:12px;padding:12px 18px;border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(11,6,24,.94);z-index:5}
+header b{font-size:1.1rem}#who{color:var(--mut);font-size:.88rem;margin-left:auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+main{max-width:860px;margin:0 auto;padding:18px 18px 90px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding-bottom:10px;margin-bottom:14px}
+.tab{flex:none;min-height:44px;padding:8px 16px;border-radius:999px;border:1px solid var(--vio);background:none;color:var(--text);font:inherit;font-weight:600;cursor:pointer}
+.tab[aria-selected=true]{background:#6f2fd6}
+.card{background:rgba(42,23,96,.35);border:1px solid var(--line);border-radius:18px;padding:14px;margin-bottom:12px;display:grid;gap:10px}
+label{display:grid;gap:4px;color:var(--mut);font-size:.88rem}
+input,textarea,select{width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--vio);background:var(--panel);color:var(--text);font:inherit;min-height:44px}
+input[readonly]{opacity:.7}textarea{min-height:90px;resize:vertical}
+.btn{min-height:44px;padding:10px 20px;border:0;border-radius:999px;background:var(--ap);color:#1b0a00;font:inherit;font-weight:700;cursor:pointer}.btn:disabled{opacity:.5}
+.ghost{background:none;border:1px solid var(--vio);color:var(--text);font-weight:600}.danger{border-color:var(--bad);color:var(--bad)}
+.acts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chk{display:flex;gap:16px;flex-wrap:wrap}.chk label{display:flex;align-items:center;gap:6px;color:var(--text);font-size:1rem}.chk input{width:22px;min-height:22px;height:22px}
+.av{width:56px;height:56px;border-radius:50%;object-fit:cover;border:2px solid var(--vio);background:var(--panel)}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 18px;background:rgba(11,6,24,.95);border-top:1px solid var(--line);display:flex;gap:10px;justify-content:center;z-index:6}
+.hint{color:var(--mut);font-size:.92rem}.err{color:var(--bad)}
+.login{max-width:480px;margin:6vh auto;display:grid;gap:12px;padding:0 4px}
+.toast{pointer-events:none;position:fixed;left:50%;bottom:84px;transform:translate(-50%,20px);opacity:0;background:#2f9e5b;color:#fff;padding:10px 20px;border-radius:12px;font-weight:600;transition:.3s;z-index:20;max-width:90vw;text-align:center}.toast.on{opacity:1;transform:translate(-50%,0)}.toast.bad{background:#c0344f}
+</style></head><body>
+<header><b>Адмінка</b><span id="who"></span><button class="btn ghost" id="out" hidden>Вийти</button></header>
+<main id="app"></main><div class="toast" id="ts" role="status"></div>
+<script>
+const $=(q,e=document)=>e.querySelector(q),el=(t,c,h)=>{const e=document.createElement(t);if(c)e.className=c;if(h!=null)e.innerHTML=h;return e};
+const LS=localStorage;let TOKEN=LS.ad_token||'',REPO=LS.ad_repo||(()=>{const h=location.hostname,p=location.pathname.split('/')[1];return h.endsWith('.github.io')?h.split('.')[0]+'/'+(p&&p!=='admin.html'?p:h):''})();
+let dirty=false;addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});
+function toast(m,bad){const t=$('#ts');t.textContent=m;t.className='toast on'+(bad?' bad':'');clearTimeout(toast.t);toast.t=setTimeout(()=>t.className='toast',4000)}
+const api=async(path,opt={})=>{const r=await fetch('https://api.github.com'+path,{...opt,cache:'no-store',headers:{Authorization:'Bearer '+TOKEN,Accept:'application/vnd.github+json','X-GitHub-Api-Version':'2022-11-28'}});if(!r.ok){const e=new Error('HTTP '+r.status);e.status=r.status;throw e}return r.json()};
+const b64d=s=>decodeURIComponent(escape(atob(s.replace(/\n/g,'')))),b64e=s=>btoa(unescape(encodeURIComponent(s)));
+const SHA={};
+async function load(f){const j=await api('/repos/'+REPO+'/contents/data/'+f+'.json');SHA[f]=j.sha;return JSON.parse(b64d(j.content))}
+async function save(f,obj){const j=await api('/repos/'+REPO+'/contents/data/'+f+'.json',{method:'PUT',body:JSON.stringify({message:'Адмінка: оновлено '+f+'.json',content:b64e(JSON.stringify(obj,null,2)+'\n'),sha:SHA[f]})});SHA[f]=j.content.sha}
+const why=e=>e.status===401?'Токен недійсний або прострочений. Вийди й увійди з новим.':e.status===403?'Немає прав. У токені потрібен доступ Contents: Read and write.':e.status===404?'Не знайдено: перевір назву репозиторію й що файл є в папці data.':e.status===409||e.status===422?'Файл змінився з іншого місця (наприклад, ботом). Відкрий вкладку заново й повтори.':'Помилка: '+e.message;
+const today=()=>new Date().toISOString().slice(0,10);
+const lab=(t,n)=>{const l=el('label');l.append(t,n);return l};
+function inp(o,k,type,ph){const i=el(type==='area'?'textarea':'input');if(type!=='area')i.type=type||'text';if(ph)i.placeholder=ph;i.value=o[k]==null?'':o[k];i.oninput=()=>{o[k]=i.value};return i}
+function bar(fn){const b=el('div','bar'),s=el('button','btn','Зберегти');s.onclick=async()=>{s.disabled=true;try{await fn();dirty=false;toast('Збережено. На сайті з’явиться за 1–3 хвилини.')}catch(e){toast(why(e),true)}s.disabled=false};b.append(s);return b}
+function rows(host,o){const wrap=el('div');host.append(wrap);let q='',sEl=null;
+ if(o.search){const s=sEl=el('input');s.type='search';s.placeholder='Пошук';s.oninput=()=>{q=s.value.toLowerCase();draw()};host.insertBefore(s,wrap);s.style.marginBottom='12px'}
+ function draw(){wrap.innerHTML='';o.items.forEach((it,i)=>{if(q&&!JSON.stringify(it).toLowerCase().includes(q))return;const c=el('div','card');
+  if(o.head)c.append(o.head(it));
+  o.fields.forEach(f=>{if(f.show&&!f.show(it))return;let n;
+   if(f.type==='roles'){n=el('div','chk');[['all','Усі'],['sub','Підписники'],['mod','Модератори']].forEach(([v,t])=>{const l=el('label'),x=el('input');x.type='checkbox';x.checked=(it.roles||[]).includes(v);x.onchange=()=>{const s=new Set(it.roles||[]);x.checked?s.add(v):s.delete(v);it.roles=[...s]};l.append(x,t);n.append(l)})}
+   else if(f.type==='select'){n=el('select');f.opts.forEach(([v,t])=>{const p=el('option',null,t);p.value=v;n.append(p)});n.value=it[f.k]||f.opts[0][0];n.onchange=()=>{it[f.k]=n.value;draw()}}
+   else{n=inp(it,f.k,f.type,f.ph);if(f.ro)n.readOnly=true}
+   c.append(lab(f.l,n))});
+  const a=el('div','acts');
+  if(o.order){[['↑',-1],['↓',1]].forEach(([t,d])=>{const b=el('button','btn ghost',t);b.setAttribute('aria-label',d<0?'Вгору':'Вниз');b.onclick=()=>{const j=i+d;if(j<0||j>=o.items.length)return;[o.items[i],o.items[j]]=[o.items[j],o.items[i]];dirty=true;draw()};a.append(b)})}
+  const d=el('button','btn ghost danger','Видалити');d.onclick=()=>{if(confirm(o.warn||'Видалити цей запис?')){o.items.splice(i,1);dirty=true;draw()}};a.append(d);c.append(a);wrap.append(c)});
+  if(!wrap.children.length)wrap.append(el('p','hint',o.items.length?'Нічого не знайдено.':'Поки порожньо.'))}
+ draw();const add=el('button','btn ghost','+ '+(o.addText||'Додати'));add.onclick=()=>{o.items.push(o.make());dirty=true;q='';if(sEl)sEl.value='';draw();const last=wrap.lastElementChild;if(last)last.scrollIntoView({block:'center'})};host.append(add);return draw}
+const TABS=[
+{t:'Посилання',async run(h){const d=await load('site');d.links=d.links||{};const c=el('div','card');[['twitch','Twitch'],['telegram','Telegram'],['discord','Discord (запрошення)'],['donatello','Donatello'],['tiktok','TikTok (порожньо = кнопка неактивна)']].forEach(([k,l])=>c.append(lab(l,inp(d.links,k,'url','https://'))));h.append(c,bar(()=>save('site',d)))}},
+{t:'Бот',async run(h){const d=await load('site');d.bot=d.bot||{};const c=el('div','card');[['twitch','Що вміє бот у Twitch'],['telegram','Що вміє бот у Telegram'],['discord','Що вміє бот у Discord']].forEach(([k,l])=>c.append(lab(l,inp(d.bot,k,'area'))));c.append(el('p','hint','Новий рядок у тексті зберігається як перенос.'));h.append(c,bar(()=>save('site',d)))}},
+{t:'Команди',async run(h){const d=await load('commands');h.append(el('p','hint','Лише команди для глядачів. Познач, кому вони доступні.'));rows(h,{items:d,search:1,addText:'Додати команду',make:()=>({c:'!',d:'',roles:['all']}),fields:[{k:'c',l:'Команда',ph:'!команда'},{k:'d',l:'Опис',type:'area'},{k:'roles',l:'Хто може користуватись',type:'roles'}]});h.append(bar(async()=>{const o=d.filter(x=>x.c&&x.c.trim().length>1);o.forEach(x=>{x.c=x.c.trim();if(!x.roles||!x.roles.length)x.roles=['all']});d.length=0;d.push(...o);await save('commands',d)}))}},
+{t:'Цитати',async run(h){const d=await load('quotes');h.append(el('p','hint','Номер цитати постійний: при видаленні інші номери не змінюються.'));rows(h,{items:d,search:1,addText:'Додати цитату',warn:'Видалити цитату? Її номер залишиться вільним, інші не зміняться.',make:()=>({n:Math.max(0,...d.map(x=>+x.n||0))+1,t:'',by:'',d:today()}),head:it=>el('b',null,'№ '+esc(it.n)),fields:[{k:'t',l:'Текст цитати',type:'area'},{k:'by',l:'Автор (нік)'},{k:'d',l:'Дата',type:'date'}]});h.append(bar(async()=>{const o=d.filter(x=>x.t&&x.t.trim());d.length=0;d.push(...o.sort((a,b)=>a.n-b.n));await save('quotes',d)}))}},
+{t:'Друзі',async run(h){const d=await load('friends');const top=el('div','card'),i=el('input');i.type='search';i.placeholder='Посилання на канал або Twitch-нік';const b=el('button','btn','Додати друга');top.append(lab('Новий друг',i),b);h.append(top);
+ const draw=rows(h,{items:d,order:1,fields:[{k:'name',l:'Ім’я на сайті'},{k:'login',l:'Twitch-нік',ro:1},{k:'avatar',l:'Адреса аватарки (порожньо = підтягнеться сама)',type:'url'}],head:it=>{const im=el('img','av');im.alt='';if(it.avatar)im.src=it.avatar;return im}});
+ b.onclick=async()=>{const m=i.value.trim().match(/twitch\.tv\/([A-Za-z0-9_]+)/i),login=(m?m[1]:i.value.trim().replace(/^@/,'')).toLowerCase();if(!/^[a-z0-9_]{2,25}$/.test(login)){toast('Не схоже на Twitch-нік',true);return}if(d.some(x=>x.login===login)){toast('Цей друг уже є',true);return}
+  const f={login,name:login,avatar:''};try{const u=(await(await fetch('https://decapi.me/twitch/avatar/'+login)).text()).trim();if(/^https?:/.test(u))f.avatar=u}catch(e){}
+  d.push(f);dirty=true;i.value='';draw();toast(f.avatar?'Друга додано з аватаркою. Натисни «Зберегти».':'Друга додано, аватарка підтягнеться на сайті сама. Натисни «Зберегти».')};
+ h.append(bar(()=>save('friends',d)))}},
+{t:'VIP',async run(h){const v=await load('vip'),s=await load('site');v.vip=v.vip||[];const c=el('div','card'),sel=el('select');[['until','дату завершення'],['since','дату видачі']].forEach(([a,t])=>{const p=el('option',null,t);p.value=a;sel.append(p)});sel.value=s.vipDate||'until';sel.onchange=()=>{s.vipDate=sel.value};c.append(lab('Біля тимчасових VIP показувати',sel));h.append(c);
+ rows(h,{items:v.vip,search:1,addText:'Додати VIP',make:()=>({n:'',type:'perm'}),fields:[{k:'n',l:'Нік'},{k:'type',l:'Тип',type:'select',opts:[['perm','Постійний'],['temp','Тимчасовий']]},{k:'since',l:'Дата видачі',type:'date',show:x=>x.type==='temp'},{k:'until',l:'Дата завершення',type:'date',show:x=>x.type==='temp'}]});
+ h.append(bar(async()=>{const ok=v.vip.filter(x=>x.n&&x.n.trim());v.vip.length=0;v.vip.push(...ok);v.vip.forEach(x=>{if(x.type!=='temp'){delete x.since;delete x.until}});await save('vip',v);await save('site',s)}))}},
+{t:'Фільми',async run(h){const d=await load('movies');d.films=d.films||[];h.append(el('p','hint','Дні з фільмами підсвічуються в календарі на сайті.'));rows(h,{items:d.films,addText:'Додати фільм',make:()=>({date:today(),time:'20:00',title:''}),fields:[{k:'date',l:'Дата',type:'date'},{k:'time',l:'Початок (за Києвом)',type:'time'},{k:'title',l:'Назва фільму'}]});h.append(bar(async()=>{const ok=d.films.filter(x=>x.title&&x.title.trim()).sort((a,b)=>a.date<b.date?-1:1);d.films.length=0;d.films.push(...ok);await save('movies',d)}))}}];
+const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let cur=-1;
+async function openTab(i){if(dirty&&!confirm('Є незбережені зміни. Перейти без збереження?'))return;dirty=false;cur=i;document.querySelectorAll('.tab').forEach((b,j)=>b.setAttribute('aria-selected',j===i));const h=$('#tab');h.innerHTML='<p class="hint">Завантаження…</p>';
+ try{const box=el('div');await TABS[i].run(box);h.innerHTML='';[...box.childNodes].forEach(n=>h.append(n))}catch(e){h.innerHTML='<p class="err">'+esc(why(e))+'</p>'}}
+function start(){$('#who').textContent=REPO;$('#out').hidden=false;const a=$('#app');a.innerHTML='';const t=el('div','tabs');TABS.forEach((x,i)=>{const b=el('button','tab',x.t);b.setAttribute('role','tab');b.onclick=()=>openTab(i);t.append(b)});const tab=el('div');tab.id='tab';tab.addEventListener('input',e=>{if(e.target.type!=='search')dirty=true});tab.addEventListener('change',e=>{if(e.target.type!=='search')dirty=true});a.append(t,tab);openTab(0)}
+function login(msg){$('#who').textContent='';$('#out').hidden=true;const a=$('#app');a.innerHTML='';const f=el('form','login');f.innerHTML='<h2 style="margin:0">Вхід</h2><p class="hint">Токен зберігається лише в цьому браузері й нікуди не надсилається, крім GitHub.</p>';const r=el('input');r.value=REPO;r.placeholder='alonadomik/alonadomik.github.io';const k=el('input');k.type='password';k.placeholder='github_pat_…';k.autocomplete='off';const b=el('button','btn','Увійти'),e=el('p','err',msg||'');
+ f.append(lab('Репозиторій (власник/назва)',r),lab('Токен GitHub',k),b,e);f.onsubmit=async ev=>{ev.preventDefault();TOKEN=k.value.trim();REPO=r.value.trim();b.disabled=true;try{const j=await api('/repos/'+REPO);if(j.permissions&&!j.permissions.push)throw Object.assign(new Error('x'),{status:403});LS.ad_token=TOKEN;LS.ad_repo=REPO;start()}catch(x){e.textContent=why(x);b.disabled=false}};a.append(f)}
+$('#out').onclick=()=>{if(dirty&&!confirm('Є незбережені зміни. Вийти?'))return;dirty=false;delete LS.ad_token;TOKEN='';login()};
+TOKEN&&REPO?start():login();
+</script></body></html>
