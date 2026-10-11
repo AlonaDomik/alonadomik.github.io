@@ -1,1 +1,12 @@
-[]
+[
+  {
+    "login": "laver_stream",
+    "name": "Laver_stream",
+    "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/a56e91d0-811e-45f4-8351-8b1fcbf95b79-profile_image-300x300.png"
+  },
+  {
+    "login": "boogie_banana",
+    "name": "Boogie_Banana",
+    "avatar": "https://static-cdn.jtvnw.net/jtv_user_pictures/e58d6a09-3536-454e-a309-d43e56c8f32f-profile_image-300x300.jpg"
+  }
+]
