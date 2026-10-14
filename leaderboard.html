@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Стріки — лідерборд для OBS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&family=Onest:wght@400;600&family=Exo+2:wght@800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0b0618;--surf:#2a1760;--vio:#8a3dff;--blue:#5b8cff;--ap:#ff7a1a;--pink:#ff5fd2;--text:#f3eaff;--mut:#bfaee6;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%;background:transparent;overflow:hidden;font-family:Onest,system-ui,sans-serif;color:var(--text)}
+body.preview{background:#0b0618 repeating-conic-gradient(#150c2b 0 25%,#0f0820 0 50%) 0 0/28px 28px}
+.panel{position:fixed;width:min(54vh,96vw);display:flex;flex-direction:column;gap:.6vh;padding:1.2vh;visibility:hidden}
+.c-tr{top:1.5vh;right:1.5vh}.c-tl{top:1.5vh;left:1.5vh}.c-br{bottom:1.5vh;right:1.5vh}.c-bl{bottom:1.5vh;left:1.5vh}
+.hd{position:relative;z-index:2;display:flex;align-items:baseline;gap:1.6vh}
+h1{font:400 clamp(26px,6vh,60px)/1.5 Pacifico,cursive;background-image:linear-gradient(95deg,#7fbaff,#b37bff,#ff5fd2,#b37bff,#7fbaff);background-size:200% 100%;-webkit-background-clip:text;background-clip:text;color:transparent;padding:0 .3em .45em 0;margin-bottom:-.35em;filter:drop-shadow(0 0 1.2vh rgba(11,6,24,.95)) drop-shadow(0 0 1.6vh rgba(138,61,255,.5));animation:shm 3.2s linear infinite}
+@keyframes shm{to{background-position:-200% 0}}
+.sub{font-size:2vh;color:var(--mut);text-shadow:0 0 1vh #0b0618}
+ul{list-style:none;padding:0;position:relative;z-index:1;display:flex;flex-direction:column;gap:.9vh}
+li.r{display:grid;grid-template-columns:6.6vh minmax(0,1fr) auto;align-items:center;gap:1.2vh;height:6.3vh;padding:0 1.8vh 0 .8vh;border-radius:2.4vh;background:linear-gradient(90deg,rgba(42,23,96,.94),rgba(42,23,96,.66));border:1px solid rgba(138,61,255,.4)}
+.pl{font:800 2.8vh/1 "Exo 2",sans-serif;color:#b98bff;text-align:center}
+.pl svg{height:4.8vh;width:auto;display:block;margin:0 auto}
+.nm{font:600 2.7vh/1.15 Onest,sans-serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.v{font:800 2.8vh/1 "Exo 2",sans-serif;color:var(--ap);border:1px solid currentColor;border-radius:99px;padding:.6vh 1.6vh;white-space:nowrap}
+.g1{border-color:#ffd24d;box-shadow:0 0 2vh rgba(255,210,77,.35),inset 0 0 2.6vh rgba(255,210,77,.12)}
+.g2{border-color:#cfd8ea;box-shadow:0 0 1.4vh rgba(207,216,234,.25),inset 0 0 2vh rgba(207,216,234,.08)}
+.g3{border-color:#e6975a;box-shadow:0 0 1.4vh rgba(230,151,90,.28),inset 0 0 2vh rgba(230,151,90,.09)}
+.g1 .nm{color:#fff3c9}
+li.hit{border-color:var(--ap);background:linear-gradient(90deg,rgba(255,122,26,.34),rgba(42,23,96,.7))}
+li.hit .v{background:var(--ap);color:#1a0a00;border-color:var(--ap)}
+li.sep{height:1.8vh;text-align:center;color:var(--mut);font-size:2vh;line-height:1vh;text-shadow:0 0 1vh #0b0618}
+#sim{position:fixed;left:50%;bottom:10px;transform:translateX(-50%);z-index:9;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;max-width:94vw;align-items:center;font-size:13px}
+#sim[hidden]{display:none}
+#sim button,#sim label{font:inherit;font-size:13px;padding:6px 10px;border-radius:99px;border:1px solid #8a3dff;background:rgba(22,13,46,.94);color:#f3eaff;cursor:pointer}
+</style>
+</head>
+<body>
+<div id="panel" class="panel c-tr">
+  <div class="hd"><h1>Стріки</h1><span class="sub">серії переглядів</span></div>
+  <ul id="rows"></ul>
+</div>
+<div id="sim" hidden>
+  <button id="bs">Показати (імітація)</button>
+  <button data-c="tl">↖</button><button data-c="tr">↗</button><button data-c="bl">↙</button><button data-c="br">↘</button>
+  <label><input type="checkbox" id="keep"> не ховати</label>
+</div>
+<script>
+(() => {
+  const Q = new URLSearchParams(location.search);
+  const PREVIEW = Q.has('demo');              // ?demo=1 — тестовий режим з кнопками
+  const TOP = 10, HOLD = Math.max(3, +Q.get('t') || 15) * 1000;
+  const RM = Q.has('still') || matchMedia('(prefers-reduced-motion:reduce)').matches;
+  const P = document.getElementById('panel'), ul = document.getElementById('rows');
+  let corner = ['tr', 'tl', 'br', 'bl'].includes(Q.get('corner')) ? Q.get('corner') : 'br', timer = null, last = null;
+  const setCorner = c => { corner = c; P.className = 'panel c-' + c; };
+  setCorner(corner);
+  const dir = () => corner[1] === 'r' ? 1 : -1;
+  const A = (el, kf, o) => RM ? null : el.animate(kf, o);
+
+  const COL = { 1: ['#ffd24d', '#8a5a00'], 2: ['#dfe6f5', '#5d6b88'], 3: ['#e6975a', '#7a3f14'] };
+  const medal = p => '<svg viewBox="0 0 48 56" aria-label="' + p + ' місце"><path d="M11 0h10l7 19H18z" fill="#5b8cff"/><path d="M37 0H27l-7 19h10z" fill="#8a3dff"/><circle cx="24" cy="35" r="18" fill="' + COL[p][0] + '"/><circle cx="24" cy="35" r="14" fill="none" stroke="' + COL[p][1] + '" stroke-width="2"/><text x="24" y="42" text-anchor="middle" font-family="Exo 2,sans-serif" font-weight="800" font-size="20" fill="' + COL[p][1] + '">' + p + '</text></svg>';
+
+  function decode() {                           // #d=<base64url(JSON)>
+    const m = location.hash.match(/d=([^&]+)/); if (!m) return null;
+    try { const b = m[1].replace(/-/g, '+').replace(/_/g, '/'), bin = atob(b + '='.repeat((4 - b.length % 4) % 4));
+      return JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0)))); } catch (e) { return null; }
+  }
+  function countUp(el, from, to) {
+    if (RM || from >= to) return; const t0 = performance.now();
+    (function f(t) { const k = Math.min(1, (t - t0) / 1100), e = k === 1 ? 1 : 1 - Math.pow(2, -10 * k);
+      el.textContent = Math.round(from + (to - from) * e); if (k < 1) requestAnimationFrame(f); })(t0);
+  }
+  function row(x, place, hit, old) {
+    const li = document.createElement('li'), top3 = place >= 1 && place <= 3;
+    li.className = 'r' + (top3 ? ' g' + place : '') + (hit ? ' hit' : '');
+    li.innerHTML = '<span class="pl">' + (top3 ? medal(place) : place) + '</span><span class="nm"></span><span class="v">' + x.v + '</span>';
+    li.children[1].textContent = x.n;
+    if (hit && old != null && old < x.v) { if (!RM) li.children[2].textContent = old; setTimeout(() => countUp(li.children[2], old, x.v), 800); }
+    return li;
+  }
+  function build(d) {
+    ul.innerHTML = '';
+    const list = (d.l || []).filter(x => x && typeof x.n === 'string' && +x.v > 0).slice(0, TOP);
+    const h = d.h && d.h.n ? d.h : null; let place = 0, prev = -1, found = false;
+    list.forEach((x, i) => {
+      if (x.v !== prev) { place = i + 1; prev = x.v; }
+      const hit = !!h && x.n.toLowerCase() === h.n.toLowerCase(); if (hit) found = true;
+      ul.appendChild(row(x, place, hit, hit ? h.o : null));
+    });
+    if (h && !found) {                          // глядач поза топ-10: показуємо його окремим рядком знизу
+      const s = document.createElement('li'); s.className = 'sep'; s.textContent = '···'; ul.appendChild(s);
+      ul.appendChild(row(h, h.p || '?', true, h.o));
+    }
+    if (!list.length && !h) ul.innerHTML = '';
+  }
+  function show(d) {
+    last = d; clearTimeout(timer); P.getAnimations().forEach(a => a.cancel());
+    build(d); P.style.visibility = 'visible';
+    A(P, [{ transform: 'translateX(' + dir() * 115 + '%)', opacity: 0 }, { transform: 'none', opacity: 1 }], { duration: 650, easing: 'cubic-bezier(.2,.8,.2,1)' });
+    [...ul.children].forEach((li, i) => A(li, [{ opacity: 0, transform: 'translateX(' + dir() * 4 + 'vh)' }, { opacity: 1, transform: 'none' }], { duration: 500, delay: 250 + i * 55, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'backwards' }));
+    const hit = ul.querySelector('.hit');
+    if (hit) A(hit, [{ boxShadow: '0 0 0 rgba(255,122,26,0)' }, { boxShadow: '0 0 3.4vh rgba(255,122,26,.95)' }], { duration: 750, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out', delay: 900 });
+    if (!(PREVIEW && document.getElementById('keep').checked)) timer = setTimeout(hide, HOLD);
+  }
+  function hide() {
+    const done = () => { P.style.visibility = 'hidden'; ul.innerHTML = ''; };
+    const a = A(P, [{ transform: 'none', opacity: 1 }, { transform: 'translateX(' + dir() * 115 + '%)', opacity: 0 }], { duration: 600, easing: 'ease-in', fill: 'forwards' });
+    a ? a.onfinish = done : done();
+  }
+  const fromUrl = () => { const d = decode(); if (d) show(d); };
+  addEventListener('hashchange', fromUrl); fromUrl();
+
+  if (PREVIEW) {
+    document.body.classList.add('preview'); document.getElementById('sim').hidden = false;
+    let demo = [['kotyk_ua', 55], ['nova_zirka', 40], ['aperol_fan', 35], ['lapky_pro', 30], ['kyiv_night', 25], ['cat_mama', 25], ['ps5_ranger', 20], ['zgraya_01', 15], ['tihiy_glyad', 10], ['novachok', 10], ['one_more', 5], ['extra_12', 5], ['tail_viewer', 5]].map(([n, v]) => ({ n, v })), c = 0;
+    const sim = () => {
+      const arr = demo.map(x => ({ ...x })); let h; const r = Math.random();
+      if (r < .45) { const t = arr[Math.floor(Math.random() * arr.length)]; h = { n: t.n, o: t.v }; t.v += 5; h.v = t.v; }
+      else if (r < .75) { const t = arr[arr.length - 1]; h = { n: t.n, o: t.v }; t.v += 5; h.v = t.v; }        // з «хвоста» списку
+      else { h = { n: 'новий_глядач_' + (++c), v: 5 + 5 * Math.floor(Math.random() * 8), o: 0 }; arr.push({ n: h.n, v: h.v }); }
+      arr.sort((a, b) => b.v - a.v); h.p = 1 + arr.filter(x => x.v > h.v).length; demo = arr;
+      show({ l: arr.slice(0, TOP), h });
+    };
+    document.getElementById('bs').onclick = sim;
+    document.querySelectorAll('#sim [data-c]').forEach(b => b.onclick = () => { setCorner(b.dataset.c); if (last) show(last); else sim(); });
+    document.getElementById('keep').onchange = e => { if (e.target.checked) clearTimeout(timer); else if (last) timer = setTimeout(hide, HOLD); };
+    if (Q.has('still')) sim(); else setTimeout(sim, 400);
+  }
+})();
+</script>
+</body>
+</html>
