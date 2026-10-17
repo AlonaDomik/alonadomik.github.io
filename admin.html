@@ -42,6 +42,11 @@ async function load(f){const j=await api('/repos/'+REPO+'/contents/data/'+f+'.js
 async function save(f,obj){const j=await api('/repos/'+REPO+'/contents/data/'+f+'.json',{method:'PUT',body:JSON.stringify({message:'Адмінка: оновлено '+f+'.json',content:b64e(JSON.stringify(obj,null,2)+'\n'),sha:SHA[f]})});SHA[f]=j.content.sha}
 const why=e=>e.status===401?'Токен недійсний або прострочений. Вийди й увійди з новим.':e.status===403?'Немає прав. У токені потрібен доступ Contents: Read and write.':e.status===404?'Не знайдено: перевір назву репозиторію й що файл є в папці data.':e.status===409||e.status===422?'Файл змінився з іншого місця (наприклад, ботом). Відкрий вкладку заново й повтори.':'Помилка: '+e.message;
 const today=()=>new Date().toISOString().slice(0,10);
+const readB64=f=>new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=()=>rej(new Error('Не вдалося прочитати файл'));r.readAsDataURL(f)});
+async function putFile(path,b64,msg){let sha;try{sha=(await api('/repos/'+REPO+'/contents/'+path)).sha}catch(e){if(e.status!==404)throw e}
+ await api('/repos/'+REPO+'/contents/'+path,{method:'PUT',body:JSON.stringify(Object.assign({message:msg,content:b64},sha?{sha}:{}))})}
+async function delFile(path){let sha;try{sha=(await api('/repos/'+REPO+'/contents/'+path)).sha}catch(e){if(e.status===404)return;throw e}
+ await api('/repos/'+REPO+'/contents/'+path,{method:'DELETE',body:JSON.stringify({message:'Адмінка: видалено '+path,sha})})}
 const lab=(t,n)=>{const l=el('label');l.append(t,n);return l};
 function inp(o,k,type,ph){const i=el(type==='area'?'textarea':'input');if(type!=='area')i.type=type||'text';if(ph)i.placeholder=ph;i.value=o[k]==null?'':o[k];i.oninput=()=>{o[k]=i.value};return i}
 function bar(fn){const b=el('div','bar'),s=el('button','btn','Зберегти');s.onclick=async()=>{s.disabled=true;try{await fn();dirty=false;toast('Збережено. На сайті з’явиться за 1–3 хвилини.')}catch(e){toast(why(e),true)}s.disabled=false};b.append(s);return b}
@@ -51,12 +56,13 @@ function rows(host,o){const wrap=el('div');host.append(wrap);let q='',sEl=null;
   if(o.head)c.append(o.head(it));
   o.fields.forEach(f=>{if(f.show&&!f.show(it))return;let n;
    if(f.type==='roles'){n=el('div','chk');[['all','Усі'],['sub','Підписники'],['mod','Модератори']].forEach(([v,t])=>{const l=el('label'),x=el('input');x.type='checkbox';x.checked=(it.roles||[]).includes(v);x.onchange=()=>{const s=new Set(it.roles||[]);x.checked?s.add(v):s.delete(v);it.roles=[...s]};l.append(x,t);n.append(l)})}
+   else if(f.type==='file'){n=el('input');n.type='file';n.accept='audio/*,.mp3';n.onchange=()=>{const fl=n.files[0];if(fl&&fl.size>25*1024*1024){toast('Файл більший за 25 МБ. Стисни його, наприклад до 128 кбіт/с.',true);n.value='';it[f.k]=null;return}it[f.k]=fl||null}}
    else if(f.type==='select'){n=el('select');f.opts.forEach(([v,t])=>{const p=el('option',null,t);p.value=v;n.append(p)});n.value=it[f.k]||f.opts[0][0];n.onchange=()=>{it[f.k]=n.value;draw()}}
    else{n=inp(it,f.k,f.type,f.ph);if(f.ro)n.readOnly=true}
    c.append(lab(f.l,n))});
   const a=el('div','acts');
   if(o.order){[['↑',-1],['↓',1]].forEach(([t,d])=>{const b=el('button','btn ghost',t);b.setAttribute('aria-label',d<0?'Вгору':'Вниз');b.onclick=()=>{const j=i+d;if(j<0||j>=o.items.length)return;[o.items[i],o.items[j]]=[o.items[j],o.items[i]];dirty=true;draw()};a.append(b)})}
-  const d=el('button','btn ghost danger','Видалити');d.onclick=()=>{if(confirm(o.warn||'Видалити цей запис?')){o.items.splice(i,1);dirty=true;draw()}};a.append(d);c.append(a);wrap.append(c)});
+  const d=el('button','btn ghost danger','Видалити');d.onclick=()=>{if(confirm(o.warn||'Видалити цей запис?')){if(o.onDelete)o.onDelete(o.items[i]);o.items.splice(i,1);dirty=true;draw()}};a.append(d);c.append(a);wrap.append(c)});
   if(!wrap.children.length)wrap.append(el('p','hint',o.items.length?'Нічого не знайдено.':'Поки порожньо.'))}
  draw();const add=el('button','btn ghost','+ '+(o.addText||'Додати'));add.onclick=()=>{o.items.push(o.make());dirty=true;q='';if(sEl)sEl.value='';draw();const last=wrap.lastElementChild;if(last)last.scrollIntoView({block:'center'})};host.append(add);return draw}
 const TABS=[
@@ -73,7 +79,18 @@ const TABS=[
 {t:'VIP',async run(h){const v=await load('vip'),s=await load('site');v.vip=v.vip||[];const c=el('div','card'),sel=el('select');[['until','дату завершення'],['since','дату видачі']].forEach(([a,t])=>{const p=el('option',null,t);p.value=a;sel.append(p)});sel.value=s.vipDate||'until';sel.onchange=()=>{s.vipDate=sel.value};c.append(lab('Біля тимчасових VIP показувати',sel));h.append(c);
  rows(h,{items:v.vip,search:1,addText:'Додати VIP',make:()=>({n:'',type:'perm'}),fields:[{k:'n',l:'Нік'},{k:'type',l:'Тип',type:'select',opts:[['perm','Постійний'],['temp','Тимчасовий']]},{k:'since',l:'Дата видачі',type:'date',show:x=>x.type==='temp'},{k:'until',l:'Дата завершення',type:'date',show:x=>x.type==='temp'}]});
  h.append(bar(async()=>{const ok=v.vip.filter(x=>x.n&&x.n.trim());v.vip.length=0;v.vip.push(...ok);v.vip.forEach(x=>{if(x.type!=='temp'){delete x.since;delete x.until}});await save('vip',v);await save('site',s)}))}},
-{t:'Фільми',async run(h){const d=await load('movies');d.films=d.films||[];h.append(el('p','hint','Дні з фільмами підсвічуються в календарі на сайті.'));rows(h,{items:d.films,addText:'Додати фільм',make:()=>({date:today(),time:'20:00',title:''}),fields:[{k:'date',l:'Дата',type:'date'},{k:'time',l:'Початок (за Києвом)',type:'time'},{k:'title',l:'Назва фільму'}]});h.append(bar(async()=>{const ok=d.films.filter(x=>x.title&&x.title.trim()).sort((a,b)=>a.date<b.date?-1:1);d.films.length=0;d.films.push(...ok);await save('movies',d)}))}}];
+{t:'Фільми',async run(h){const d=await load('movies');d.films=d.films||[];h.append(el('p','hint','Дні з фільмами підсвічуються в календарі на сайті.'));rows(h,{items:d.films,addText:'Додати фільм',make:()=>({date:today(),time:'20:00',title:''}),fields:[{k:'date',l:'Дата',type:'date'},{k:'time',l:'Початок (за Києвом)',type:'time'},{k:'title',l:'Назва фільму'}]});h.append(bar(async()=>{const ok=d.films.filter(x=>x.title&&x.title.trim()).sort((a,b)=>a.date<b.date?-1:1);d.films.length=0;d.films.push(...ok);await save('movies',d)}))}},
+{t:'Пісні',async run(h){const d=await load('songs');const gone=[];
+ h.append(el('p','hint','Обери файл mp3 (до 25 МБ), напиши назву та підпис. Файл збережеться в папці audio. Порядок змінюють стрілки ↑↓.'));
+ const draw=rows(h,{items:d,order:1,addText:'Додати пісню',warn:'Видалити пісню з сайту? Файл теж видалиться після збереження.',make:()=>({title:'',by:'Замовив: ',src:''}),onDelete:it=>{if(it.src)gone.push(it.src)},
+  head:it=>el('small','hint',it.src?'Збережений файл: '+esc(it.src):'Файл ще не завантажено'),
+  fields:[{k:'title',l:'Назва пісні'},{k:'by',l:'Підпис під назвою (наприклад «Замовив: нік»)'},{k:'_f',l:'Файл mp3',type:'file'}]});
+ h.append(bar(async()=>{const clean=[],stamp=new Date().toISOString().replace(/\D/g,'').slice(0,14);let k=0;
+  for(const it of d){if(!it.title||!it.title.trim())continue;
+   if(it._f){const ext=(it._f.name.match(/\.(mp3|m4a|ogg|wav)$/i)||['.mp3'])[0].toLowerCase(),path='audio/'+stamp+'-'+(++k)+ext;toast('Завантажую файл «'+it.title.trim()+'»…');await putFile(path,await readB64(it._f),'Адмінка: додано пісню');if(it.src&&it.src!==path)gone.push(it.src);it.src=path;it._f=null}
+   if(!it.src)throw new Error('Для пісні «'+it.title.trim()+'» не обрано файл');
+   clean.push({title:it.title.trim(),by:(it.by||'').trim(),src:it.src})}
+  await save('songs',clean);for(const p of gone)await delFile(p);gone.length=0;d.length=0;d.push(...clean);draw()}))}}];
 const esc=s=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let cur=-1;
 async function openTab(i){if(dirty&&!confirm('Є незбережені зміни. Перейти без збереження?'))return;dirty=false;cur=i;document.querySelectorAll('.tab').forEach((b,j)=>b.setAttribute('aria-selected',j===i));const h=$('#tab');h.innerHTML='<p class="hint">Завантаження…</p>';
