@@ -66,11 +66,14 @@ body.demo .stage{position:relative;inset:auto;width:min(96vw,calc((100vh - 110px
     <div class="nickbox"><span class="nick"></span></div>
   </div></div></div>
 </div>
+<audio id="snd" src="zvuk-fotoapparata.mp3" preload="auto"></audio>
 <script>
 const DEMO=false;
 const $=s=>document.querySelector(s);
 const plate=$('.plate'),nick=$('.nick'),box=$('.nickbox'),avi=$('.av img'),ini=$('.av b');
-let timer;
+let timer,sndTimer;
+const snd=$('#snd');
+const VOL=Math.min(1,Math.max(0,parseFloat(new URLSearchParams(location.search).get('vol')||'0.8')));
 
 function fit(){
   nick.style.fontSize='';
@@ -92,6 +95,9 @@ function showShoutout(name,avatar,ms=15000){
   if(!avatar)avi.style.display='none';
   fit();
   plate.classList.add('in');
+  // звук фотоапарата в момент удару плашки (разом зі спалахом)
+  clearTimeout(sndTimer);
+  if(!DEMO)sndTimer=setTimeout(()=>{try{snd.currentTime=0;snd.volume=VOL;snd.play().catch(()=>{});}catch(e){}},850);
   timer=setTimeout(()=>plate.classList.add('out'),ms);
 }
 window.showShoutout=showShoutout;
