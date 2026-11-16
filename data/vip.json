@@ -5,23 +5,23 @@
       "type": "perm"
     },
     {
-      "n": "Boogie_Banana",
+      "n": "boogie_banana",
       "type": "perm"
     },
     {
-      "n": "by_Creat1ve",
+      "n": "by_creat1ve",
       "type": "perm"
     },
     {
-      "n": "Chiinaazes",
+      "n": "chiinaazes",
       "type": "perm"
     },
     {
-      "n": "Chtotonaenglish",
+      "n": "chtotonaenglish",
       "type": "perm"
     },
     {
-      "n": "EBanosh",
+      "n": "ebanosh",
       "type": "perm"
     },
     {
@@ -33,7 +33,7 @@
       "type": "perm"
     },
     {
-      "n": "Kiber_Smoke",
+      "n": "kiber_smoke",
       "type": "perm"
     },
     {
@@ -41,21 +41,40 @@
       "type": "perm"
     },
     {
-      "n": "Lucky_Yo0u",
+      "n": "lucky_yo0u",
       "type": "perm"
     },
     {
-      "n": "Rorik_Stead",
+      "n": "mbyourfather",
       "type": "perm"
     },
     {
-      "n": "Ukr_Palach",
+      "n": "rorik_stead",
       "type": "perm"
     },
     {
-      "n": "Vuiko_Sanek",
+      "n": "ukr_palach",
+      "type": "perm"
+    },
+    {
+      "n": "vuiko_sanek",
       "type": "temp",
       "until": "2027-04-04"
+    },
+    {
+      "n": "hexHunt3r",
+      "type": "temp",
+      "until": "2027-05-08"
+    },
+    {
+      "n": "Symphoria_play",
+      "type": "temp",
+      "until": "2027-05-14"
+    },
+    {
+      "n": "tyom_320",
+      "type": "temp",
+      "until": "2027-05-16"
     }
   ]
 }
