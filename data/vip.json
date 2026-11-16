@@ -50,7 +50,8 @@
     },
     {
       "n": "rorik_stead",
-      "type": "perm"
+      "type": "temp",
+      "until": "2027-05-16"
     },
     {
       "n": "ukr_palach",
