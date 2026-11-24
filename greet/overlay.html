@@ -41,6 +41,7 @@ const MAX_SECONDS = 30;                   // страховка: більше ц
 const stage = document.getElementById("stage");
 const queue = [];
 let busy = false;
+let currentAudio = null;
 
 function isVideo(url) {
   return /\.(mp4|webm|mov|m4v)(\?.*)?$/i.test(url);
@@ -58,6 +59,10 @@ function next() {
 }
 
 function finish() {
+  if (currentAudio) {
+    currentAudio.pause();
+    currentAudio = null;
+  }
   stage.classList.remove("show");
   setTimeout(() => {
     stage.innerHTML = "";
@@ -105,6 +110,7 @@ function play(item) {
 
   if (item.audio) {
     const a = new Audio(item.audio);
+    currentAudio = a;
     a.onerror = end;
     if (!seconds) a.onended = end;
     a.play().catch(end);
