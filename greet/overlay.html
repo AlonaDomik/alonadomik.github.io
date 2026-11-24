@@ -45,13 +45,16 @@
 
 <script>
 // ===== НАЛАШТУВАННЯ =====
-const WS_URL = "ws://127.0.0.1:8080/";   // адреса WebSocket-сервера Streamer.bot
+const PARAMS = new URLSearchParams(location.search);
+// Адреса WebSocket-сервера Streamer.bot. Якщо Streamer.bot на іншому ПК,
+// додайте до адреси оверлея ?ws=192.168.0.15:8080 (IP того ПК, де Streamer.bot)
+const WS_URL = PARAMS.get("ws") ? "ws://" + PARAMS.get("ws") + "/" : "ws://127.0.0.1:8080/";
 const DEFAULT_IMAGE_SECONDS = 6;          // скільки показувати фото, якщо duration не вказано
 const MAX_SECONDS = 30;                   // страховка: більше цього часу ніщо не грає
 // ========================
 
 // Діагностика: додайте до адреси ?debug=1 і в куті з'явиться панель зі статусом
-const DEBUG = new URLSearchParams(location.search).has("debug");
+const DEBUG = PARAMS.has("debug");
 
 const stage = document.getElementById("stage");
 const queue = [];
@@ -206,7 +209,40 @@ function connect() {
   ws.onerror = () => ws.close();
 }
 
-connect();
+// Режим 1 (рекомендований): Streamer.bot через своє підключення до OBS підставляє в URL джерела
+//   ?media=...&audio=...&duration=...&t=...  - сторінка відтворює привітання і більше нічого не робить.
+// Режим 2: якщо в URL є ?ws=IP:порт - сторінка слухає WebSocket-сервер Streamer.bot.
+const directMedia = PARAMS.get("media") || "";
+const directAudio = PARAMS.get("audio") || "";
+
+if (directMedia || directAudio) {
+  // Захист від повтору: той самий запуск (параметр t) не відтворюється двічі,
+  // наприклад після перезапуску OBS чи оновлення сторінки
+  const t = PARAMS.get("t");
+  let alreadyPlayed = false;
+  try {
+    if (t) {
+      alreadyPlayed = localStorage.getItem("pg_last") === t;
+      localStorage.setItem("pg_last", t);
+    }
+  } catch (err) {}
+
+  if (alreadyPlayed) {
+    dbg("це привітання вже відтворено, пропускаю");
+  } else {
+    dbg("режим URL: " + (PARAMS.get("user") || "гість"));
+    enqueue({
+      user: PARAMS.get("user") || "",
+      media: directMedia,
+      audio: directAudio,
+      duration: Number(PARAMS.get("duration")) || 0
+    });
+  }
+} else if (PARAMS.has("ws")) {
+  connect();
+} else {
+  dbg("очікую привітання (режим URL)");
+}
 </script>
 </body>
 </html>
