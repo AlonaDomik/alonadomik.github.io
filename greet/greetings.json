@@ -1,13 +1,13 @@
 {
-  "twitch_nick_1": {
-    "media": "https://alonadomik.github.io/greet/media/nick1.mp4"
+  "chiinaazes": {
+    "media": "https://alonadomik.github.io/greet/media/Chinazes.wav"
   },
-  "twitch_nick_2": {
+  "boogie_banana": {
     "media": "https://alonadomik.github.io/greet/media/nick2.png",
     "audio": "https://alonadomik.github.io/greet/media/nick2.mp3",
     "duration": 7
   },
-  "twitch_nick_3": {
+  "lucky_yo0u": {
     "action": "Назва екшену з улюбленою редімкою"
   },
   "twitch_nick_4": {
