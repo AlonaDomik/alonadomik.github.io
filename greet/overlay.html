@@ -47,7 +47,7 @@
 // ===== НАЛАШТУВАННЯ =====
 const PARAMS = new URLSearchParams(location.search);
 // Адреса WebSocket-сервера Streamer.bot. Якщо Streamer.bot на іншому ПК,
-// додайте до адреси оверлея ?ws=192.168.0.15:8080 (IP того ПК, де Streamer.bot)
+// додайте до адреси оверлея ?ws=192.168.0.18:8080 (IP того ПК, де Streamer.bot)
 const WS_URL = PARAMS.get("ws") ? "ws://" + PARAMS.get("ws") + "/" : "ws://127.0.0.1:8080/";
 const DEFAULT_IMAGE_SECONDS = 6;          // скільки показувати фото, якщо duration не вказано
 const MAX_SECONDS = 30;                   // страховка: більше цього часу ніщо не грає
