@@ -75,6 +75,11 @@
       "n": "tyom_320",
       "type": "temp",
       "until": "2027-05-16"
+    },
+    {
+      "n": "MadPandaUA",
+      "type": "temp",
+      "until": "2027-05-28"
     }
   ]
 }
