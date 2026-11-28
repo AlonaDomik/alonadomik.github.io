@@ -5,6 +5,9 @@
   "boogie_banana": {
     "media": "https://alonadomik.github.io/greet/media/banana.mp4"
   },
+  "laver_stream": {
+    "audio": "https://alonadomik.github.io/greet/media/Poganiy.wav"
+  },
   "ebanosh": {
     "media": "https://alonadomik.github.io/greet/media/Banosh.mp4"
   },
